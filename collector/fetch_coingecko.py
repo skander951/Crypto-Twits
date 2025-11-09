@@ -1,49 +1,76 @@
 import requests
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timezone
 import time
 import os
-from dotenv import load_dotenv
 
-# Load .env file
-load_dotenv()
-
-API_KEY = os.getenv("COINGECKO_API_KEY")
 OUTPUT_FILE = "/data/crypto_data.csv"
-COINS = ["bitcoin", "ethereum", "cardano"]
+COINS = ["solana", "ethereum", "cardano"]
 INTERVAL = 60  # seconds
 
 def fetch_prices():
-    url = "https://pro-api.coingecko.com/api/v3/simple/price"
-    headers = {"X-Cg-Pro-Api-Key": API_KEY}  # use key from .env
+    url = "https://api.coingecko.com/api/v3/coins/markets"
     params = {
+        "vs_currency": "usd",
         "ids": ",".join(COINS),
-        "vs_currencies": "usd",
-        "include_24hr_change": "true"
+        "order": "market_cap_desc",
+        "per_page": len(COINS),
+        "page": 1
     }
-    response = requests.get(url, headers=headers, params=params)
-    return response.json()
 
-def main():
-    os.makedirs("/data", exist_ok=True)
-    while True:
-        data = fetch_prices()
-        rows = []
-        timestamp = datetime.utcnow()
-        for coin, info in data.items():
-            rows.append({
-                "timestamp": timestamp,
-                "coin": coin,
-                "price": info["usd"],
-                "change_24h": info["usd_24h_change"]
-            })
-        df = pd.DataFrame(rows)
-        if os.path.exists(OUTPUT_FILE):
+    try:
+        response = requests.get(url, params=params, timeout=10)
+        print(response.status_code, response.text)  # <- debug
+        response.raise_for_status()
+        data = response.json()
+
+        if not isinstance(data, list) or len(data) == 0:
+            print("No valid data returned from API.")
+            return []
+
+        return data
+
+    except requests.exceptions.RequestException as e:
+        print("Request failed:", e)
+        return []
+
+def save_to_csv(rows):
+    """Append new rows to CSV, creating it with header if it doesn't exist."""
+    df = pd.DataFrame(rows)
+    if os.path.exists(OUTPUT_FILE):
+        try:
             df_existing = pd.read_csv(OUTPUT_FILE)
             df = pd.concat([df_existing, df], ignore_index=True)
-        df.to_csv(OUTPUT_FILE, index=False)
-        print(f"[{timestamp}] Data saved.")
+        except pd.errors.EmptyDataError:
+            print("Existing CSV is empty, creating new one.")
+    else:
+        os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+
+    df.to_csv(OUTPUT_FILE, index=False)
+
+def main():
+    while True:
+        data = fetch_prices()
+        if not data:
+            print(f"[{datetime.now(datetime.timezone.utc)}] No data received, retrying in {INTERVAL}s...")
+            time.sleep(INTERVAL)
+            continue
+
+        timestamp = datetime.now(timezone.utc)
+        rows = []
+        for crypto in data:
+            rows.append({
+                "timestamp": timestamp,
+                "coin": crypto.get("id"),
+                "price": crypto.get("current_price"),
+                "change_24h": crypto.get("price_change_percentage_24h")
+            })
+
+        save_to_csv(rows)
+        print(f"[{timestamp}] Data saved for {len(rows)} coins.")
         time.sleep(INTERVAL)
 
 if __name__ == "__main__":
     main()
+
+

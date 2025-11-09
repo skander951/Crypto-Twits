@@ -1,24 +1,22 @@
-version: "3.9"
-
 services:
   coingecko_collector:
     build:
       context: ./collector
       dockerfile: Dockerfile.coingecko
     volumes:
-      - data:/data
+      - ./data:/data 
 
   reddit_collector:
     build:
       context: ./collector
       dockerfile: Dockerfile.reddit
     volumes:
-      - data:/data
+      - ./data:/data 
 
   preprocessor:
     build: ./preprocessor
     volumes:
-      - data:/data
+      - ./data:/data 
     depends_on:
       - coingecko_collector
       - reddit_collector
@@ -28,7 +26,7 @@ services:
     ports:
       - "8050:8050"
     volumes:
-      - data:/data
+      - ./data:/data 
     depends_on:
       - preprocessor
 

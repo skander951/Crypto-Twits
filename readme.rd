@@ -1,13 +1,39 @@
-# Real-Time Crypto Prediction — Scaffold
+🪙 Crypto Dashboard & Sentiment Monitor
+📊 Overview
 
+Crypto Dashboard & Sentiment Monitor is a real-time analytics platform that tracks cryptocurrency market movements and social sentiment.
+It combines live price data from CoinGecko and Reddit sentiment analysis, then visualizes everything in an interactive Dash dashboard.
 
-## Quick start
+The system runs entirely in Docker Compose, with independent microservices handling data collection, preprocessing, and visualization.
 
+⚙️ Features
 
-1. Create a `data/` directory in the repository root.
-2. Copy `.env.example` to `.env` and edit if needed.
-3. Build and run with docker-compose:
+    📈 Live Crypto Price Trends (via CoinGecko API)
 
+    🚀 Top Gainers / Losers visualization
 
-```bash
-docker compose up --build
+    💬 Reddit Sentiment Heatmap (without API key)
+
+    ♻️ Automatic updates every minute
+
+    🐳 Fully containerized — easy to run with docker-compose
+
+🧩 Architecture
++---------------------------+
+|   fetch_coingecko.py      | → Fetch crypto prices (CoinGecko API)
++---------------------------+
+             │
+             ▼
++---------------------------+
+|    fetch_reddit.py        | → Scrape Reddit posts & analyze sentiment
++---------------------------+
+             │
+             ▼
++---------------------------+
+|    merge_data.py          | → Merge prices + sentiment into CSV
++---------------------------+
+             │
+             ▼
++---------------------------+
+|        app.py             | → Dash dashboard (visualization)
++---------------------------+
